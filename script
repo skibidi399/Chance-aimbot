@@ -34,7 +34,7 @@ local aimTargets = {
     "c00lkidd",
     "JohnDoe",
     "1x1x1x1",
-    "noli"
+    "Noli"
 }
 
 local trackedAnimations = {
