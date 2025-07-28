@@ -2,12 +2,13 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 -- GUI Setup
-local screenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AutoAimUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = PlayerGui
 
 local toggleButton = Instance.new("TextButton")
 toggleButton.Size = UDim2.new(0, 120, 0, 30)
@@ -27,92 +28,94 @@ predictionBox.PlaceholderText = "Prediction (0-2)"
 predictionBox.ClearTextOnFocus = false
 predictionBox.Parent = screenGui
 
--- Configuration
+-- Config
 local active = false
-local aimTargets = {
-    "Jason",
-    "c00lkidd",
-    "JohnDoe",
-    "1x1x1x1",
-    "Noli"
-}
-
+local aimTargets = { "Jason", "c00lkidd", "JohnDoe", "1x1x1x1", "noli" }
 local trackedAnimations = {
     ["103601716322988"] = true,
     ["133491532453922"] = true,
     ["86371356500204"] = true
 }
 
--- Toggle button logic
+-- State
+local Humanoid = nil
+local lastTriggerTime = 0
+local aiming = false
+
+-- Button toggle
 toggleButton.MouseButton1Click:Connect(function()
     active = not active
     toggleButton.Text = active and "Auto Aim: ON" or "Auto Aim: OFF"
 end)
 
--- Function to get a valid target
+-- Target finder
 local function getValidTarget()
-    for _, name in ipairs(aimTargets) do
-        local killer = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers") and workspace.Players.Killers:FindFirstChild(name)
-        if killer and killer:FindFirstChild("HumanoidRootPart") then
-            return killer.HumanoidRootPart
+    local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
+    if killersFolder then
+        for _, name in ipairs(aimTargets) do
+            local target = killersFolder:FindFirstChild(name)
+            if target and target:FindFirstChild("HumanoidRootPart") then
+                return target.HumanoidRootPart
+            end
         end
     end
     return nil
 end
 
--- Function to get playing animation ids
+-- Animation checker
 local function getPlayingAnimationIds()
-    local anims = {}
-    for _, track in ipairs(Humanoid:GetPlayingAnimationTracks()) do
-        if track.Animation and track.Animation.AnimationId then
-            local id = track.Animation.AnimationId:match("%d+")
-            if id then
-                anims[id] = true
+    local ids = {}
+    if Humanoid then
+        for _, track in ipairs(Humanoid:GetPlayingAnimationTracks()) do
+            if track.Animation and track.Animation.AnimationId then
+                local id = track.Animation.AnimationId:match("%d+")
+                if id then ids[id] = true end
             end
         end
     end
-    return anims
+    return ids
 end
 
--- Aiming state
-local lastTriggerTime = 0
-local aiming = false
+-- Setup character tracking on respawn
+local function setupCharacter(char)
+    Humanoid = char:WaitForChild("Humanoid")
+end
 
--- Main aim loop
+if LocalPlayer.Character then setupCharacter(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(setupCharacter)
+
+-- Main loop
 RunService.RenderStepped:Connect(function()
-    if not active then return end
+    if not active or not Humanoid then return end
 
-    local playingAnims = getPlayingAnimationIds()
-    local trigger = false
+    local playing = getPlayingAnimationIds()
+    local triggered = false
     for id in pairs(trackedAnimations) do
-        if playingAnims[id] then
-            trigger = true
+        if playing[id] then
+            triggered = true
             break
         end
     end
 
-    if trigger then
+    if triggered then
         lastTriggerTime = tick()
         aiming = true
     end
 
-    if aiming and tick() - lastTriggerTime <= 2.8 then
+    if aiming and tick() - lastTriggerTime <= 3.7 then
         local char = LocalPlayer.Character
         if not (char and char:FindFirstChild("HumanoidRootPart")) then return end
 
         local targetHRP = getValidTarget()
         if targetHRP then
-            local predictionStuds = tonumber(predictionBox.Text) or 0
-            predictionStuds = math.clamp(predictionStuds, 0, 2)
+            local prediction = tonumber(predictionBox.Text) or 0
+            prediction = math.clamp(prediction, 0, 2)
+            local predictedPos = targetHRP.Position + (targetHRP.CFrame.LookVector * prediction)
 
-            local predictedPos = targetHRP.Position + (targetHRP.CFrame.LookVector * predictionStuds)
             local myHRP = char.HumanoidRootPart
-
-            local lookDir = (predictedPos - myHRP.Position).Unit
-            local newCFrame = CFrame.new(myHRP.Position, myHRP.Position + lookDir)
-            myHRP.CFrame = CFrame.new(myHRP.Position) * CFrame.Angles(0, (newCFrame - newCFrame.Position).Rotation.Y, 0)
+            myHRP.CFrame = CFrame.lookAt(myHRP.Position, predictedPos)
         end
-    elseif tick() - lastTriggerTime > 3.7 then
+    elseif tick() - lastTriggerTime > 2.7 then
         aiming = false
     end
 end)
