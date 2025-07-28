@@ -1,0 +1,118 @@
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+
+-- GUI Setup
+local screenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+screenGui.Name = "AutoAimUI"
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 120, 0, 30)
+toggleButton.Position = UDim2.new(0, 20, 0, 100)
+toggleButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+toggleButton.TextColor3 = Color3.new(1, 1, 1)
+toggleButton.Text = "Auto Aim: OFF"
+toggleButton.Parent = screenGui
+
+local predictionBox = Instance.new("TextBox")
+predictionBox.Size = UDim2.new(0, 120, 0, 30)
+predictionBox.Position = UDim2.new(0, 20, 0, 140)
+predictionBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+predictionBox.TextColor3 = Color3.new(1, 1, 1)
+predictionBox.Text = "0"
+predictionBox.PlaceholderText = "Prediction (0-2)"
+predictionBox.ClearTextOnFocus = false
+predictionBox.Parent = screenGui
+
+-- Configuration
+local active = false
+local aimTargets = {
+    "Jason",
+    "c00lkidd",
+    "JohnDoe",
+    "1x1x1x1",
+    "noli"
+}
+
+local trackedAnimations = {
+    ["103601716322988"] = true,
+    ["133491532453922"] = true,
+    ["86371356500204"] = true
+}
+
+-- Toggle button logic
+toggleButton.MouseButton1Click:Connect(function()
+    active = not active
+    toggleButton.Text = active and "Auto Aim: ON" or "Auto Aim: OFF"
+end)
+
+-- Function to get a valid target
+local function getValidTarget()
+    for _, name in ipairs(aimTargets) do
+        local killer = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers") and workspace.Players.Killers:FindFirstChild(name)
+        if killer and killer:FindFirstChild("HumanoidRootPart") then
+            return killer.HumanoidRootPart
+        end
+    end
+    return nil
+end
+
+-- Function to get playing animation ids
+local function getPlayingAnimationIds()
+    local anims = {}
+    for _, track in ipairs(Humanoid:GetPlayingAnimationTracks()) do
+        if track.Animation and track.Animation.AnimationId then
+            local id = track.Animation.AnimationId:match("%d+")
+            if id then
+                anims[id] = true
+            end
+        end
+    end
+    return anims
+end
+
+-- Aiming state
+local lastTriggerTime = 0
+local aiming = false
+
+-- Main aim loop
+RunService.RenderStepped:Connect(function()
+    if not active then return end
+
+    local playingAnims = getPlayingAnimationIds()
+    local trigger = false
+    for id in pairs(trackedAnimations) do
+        if playingAnims[id] then
+            trigger = true
+            break
+        end
+    end
+
+    if trigger then
+        lastTriggerTime = tick()
+        aiming = true
+    end
+
+    if aiming and tick() - lastTriggerTime <= 2.8 then
+        local char = LocalPlayer.Character
+        if not (char and char:FindFirstChild("HumanoidRootPart")) then return end
+
+        local targetHRP = getValidTarget()
+        if targetHRP then
+            local predictionStuds = tonumber(predictionBox.Text) or 0
+            predictionStuds = math.clamp(predictionStuds, 0, 2)
+
+            local predictedPos = targetHRP.Position + (targetHRP.CFrame.LookVector * predictionStuds)
+            local myHRP = char.HumanoidRootPart
+
+            local lookDir = (predictedPos - myHRP.Position).Unit
+            local newCFrame = CFrame.new(myHRP.Position, myHRP.Position + lookDir)
+            myHRP.CFrame = CFrame.new(myHRP.Position) * CFrame.Angles(0, (newCFrame - newCFrame.Position).Rotation.Y, 0)
+        end
+    elseif tick() - lastTriggerTime > 3.7 then
+        aiming = false
+    end
+end)
