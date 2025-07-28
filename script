@@ -102,7 +102,7 @@ RunService.RenderStepped:Connect(function()
         aiming = true
     end
 
-    if aiming and tick() - lastTriggerTime <= 3.7 then
+    if aiming and tick() - lastTriggerTime <= 2.5 then
         local char = LocalPlayer.Character
         if not (char and char:FindFirstChild("HumanoidRootPart")) then return end
 
@@ -115,7 +115,7 @@ RunService.RenderStepped:Connect(function()
             local myHRP = char.HumanoidRootPart
             myHRP.CFrame = CFrame.lookAt(myHRP.Position, predictedPos)
         end
-    elseif tick() - lastTriggerTime > 2.7 then
+    elseif tick() - lastTriggerTime > 2.5 then
         aiming = false
     end
 end)
