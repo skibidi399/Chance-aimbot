@@ -30,6 +30,7 @@ predictionBox.Parent = screenGui
 
 -- Config
 local active = false
+local aimDuration = 2.3 -- 🔧 How long to keep aiming after animation is triggered (you can change this)
 local aimTargets = { "Jason", "c00lkidd", "JohnDoe", "1x1x1x1", "noli" }
 local trackedAnimations = {
     ["103601716322988"] = true,
@@ -102,7 +103,7 @@ RunService.RenderStepped:Connect(function()
         aiming = true
     end
 
-    if aiming and tick() - lastTriggerTime <= 2.5 then
+    if aiming and tick() - lastTriggerTime <= aimDuration then
         local char = LocalPlayer.Character
         if not (char and char:FindFirstChild("HumanoidRootPart")) then return end
 
@@ -113,9 +114,11 @@ RunService.RenderStepped:Connect(function()
             local predictedPos = targetHRP.Position + (targetHRP.CFrame.LookVector * prediction)
 
             local myHRP = char.HumanoidRootPart
-            myHRP.CFrame = CFrame.lookAt(myHRP.Position, predictedPos)
+            local direction = (predictedPos - myHRP.Position).Unit
+            local yRotation = math.atan2(-direction.X, -direction.Z)
+            myHRP.CFrame = CFrame.new(myHRP.Position) * CFrame.Angles(0, yRotation, 0)
         end
-    elseif tick() - lastTriggerTime > 2.5 then
+    elseif tick() - lastTriggerTime > aimDuration then
         aiming = false
     end
 end)
