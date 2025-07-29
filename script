@@ -107,13 +107,134 @@ RunService.RenderStepped:Connect(function()
         local char = LocalPlayer.Character
         if not (char and char:FindFirstChild("HumanoidRootPart")) then return end
 
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- GUI Setup
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AutoAimUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = PlayerGui
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 120, 0, 30)
+toggleButton.Position = UDim2.new(0, 20, 0, 100)
+toggleButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+toggleButton.TextColor3 = Color3.new(1, 1, 1)
+toggleButton.Text = "Auto Aim: OFF"
+toggleButton.Parent = screenGui
+
+local predictionBox = Instance.new("TextBox")
+predictionBox.Size = UDim2.new(0, 120, 0, 30)
+predictionBox.Position = UDim2.new(0, 20, 0, 140)
+predictionBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+predictionBox.TextColor3 = Color3.new(1, 1, 1)
+predictionBox.Text = "0"
+predictionBox.PlaceholderText = "Prediction (0-2)"
+predictionBox.ClearTextOnFocus = false
+predictionBox.Parent = screenGui
+
+-- Config
+local active = false
+local aimDuration = 2.3 -- How long to keep aiming after animation is triggered
+local aimTargets = { "Jason", "c00lkidd", "JohnDoe", "1x1x1x1", "noli" }
+local trackedAnimations = {
+    ["103601716322988"] = true,
+    ["133491532453922"] = true,
+    ["86371356500204"] = true
+}
+
+-- State
+local Humanoid = nil
+local lastTriggerTime = 0
+local aiming = false
+
+-- Button toggle
+toggleButton.MouseButton1Click:Connect(function()
+    active = not active
+    toggleButton.Text = active and "Auto Aim: ON" or "Auto Aim: OFF"
+end)
+
+-- Target finder
+local function getValidTarget()
+    local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
+    if killersFolder then
+        for _, name in ipairs(aimTargets) do
+            local target = killersFolder:FindFirstChild(name)
+            if target and target:FindFirstChild("HumanoidRootPart") then
+                return target.HumanoidRootPart
+            end
+        end
+    end
+    return nil
+end
+
+-- Animation checker
+local function getPlayingAnimationIds()
+    local ids = {}
+    if Humanoid then
+        for _, track in ipairs(Humanoid:GetPlayingAnimationTracks()) do
+            if track.Animation and track.Animation.AnimationId then
+                local id = track.Animation.AnimationId:match("%d+")
+                if id then ids[id] = true end
+            end
+        end
+    end
+    return ids
+end
+
+-- Setup character tracking on respawn
+local function setupCharacter(char)
+    Humanoid = char:WaitForChild("Humanoid")
+end
+
+if LocalPlayer.Character then setupCharacter(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(setupCharacter)
+
+-- Main loop
+RunService.RenderStepped:Connect(function()
+    if not active or not Humanoid then return end
+
+    local playing = getPlayingAnimationIds()
+    local triggered = false
+    for id in pairs(trackedAnimations) do
+        if playing[id] then
+            triggered = true
+            break
+        end
+    end
+
+    if triggered then
+        lastTriggerTime = tick()
+        aiming = true
+    end
+
+    if aiming and tick() - lastTriggerTime <= aimDuration then
+        local char = LocalPlayer.Character
+        if not (char and char:FindFirstChild("HumanoidRootPart")) then return end
+
         local targetHRP = getValidTarget()
         if targetHRP then
+            local myHRP = char.HumanoidRootPart
             local prediction = tonumber(predictionBox.Text) or 0
             prediction = math.clamp(prediction, 0, 2)
-            local predictedPos = targetHRP.Position + (targetHRP.CFrame.LookVector * prediction)
 
-            local myHRP = char.HumanoidRootPart
+            -- Facing and movement check
+            local toPlayer = (myHRP.Position - targetHRP.Position).Unit
+            local facingDot = targetHRP.CFrame.LookVector:Dot(toPlayer)
+            local velocity = targetHRP.Velocity
+            local movingDot = velocity.Magnitude > 0 and velocity.Unit:Dot(toPlayer) or 0
+
+            local disablePrediction = (facingDot > 0.5 or movingDot > 0.5)
+
+            local predictedPos = targetHRP.Position
+            if not disablePrediction then
+                predictedPos = predictedPos + (targetHRP.CFrame.LookVector * prediction)
+            end
+
             local direction = (predictedPos - myHRP.Position).Unit
             local yRotation = math.atan2(-direction.X, -direction.Z)
             myHRP.CFrame = CFrame.new(myHRP.Position) * CFrame.Angles(0, yRotation, 0)
