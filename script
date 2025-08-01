@@ -111,9 +111,7 @@ RunService.RenderStepped:Connect(function()
             originalAutoRotate = Humanoid.AutoRotate
         end
 
-        -- Freeze player but keep them standing
-        Humanoid.WalkSpeed = 0
-        Humanoid.JumpPower = 0
+        -- Freeze but keep upright
         Humanoid.AutoRotate = false
         HRP.AssemblyAngularVelocity = Vector3.zero
 
