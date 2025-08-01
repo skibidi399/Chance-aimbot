@@ -24,13 +24,13 @@ predictionBox.Position = UDim2.new(0, 20, 0, 140)
 predictionBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 predictionBox.TextColor3 = Color3.new(1, 1, 1)
 predictionBox.Text = "0"
-predictionBox.PlaceholderText = "Prediction (0-2)"
+predictionBox.PlaceholderText = "Prediction (Put a number)"
 predictionBox.ClearTextOnFocus = false
 predictionBox.Parent = screenGui
 
 -- Config
 local active = false
-local aimDuration = 2.3
+local aimDuration = 1.7
 local aimTargets = { "Jason", "c00lkidd", "JohnDoe", "1x1x1x1", "noli" }
 local trackedAnimations = {
     ["103601716322988"] = true,
@@ -118,7 +118,6 @@ RunService.RenderStepped:Connect(function()
         local targetHRP = getValidTarget()
         if targetHRP then
             local prediction = tonumber(predictionBox.Text) or 0
-            prediction = math.clamp(prediction, 0, 2)
             local predictedPos = targetHRP.Position + (targetHRP.CFrame.LookVector * prediction)
             local direction = (predictedPos - HRP.Position).Unit
             local yRot = math.atan2(-direction.X, -direction.Z)
