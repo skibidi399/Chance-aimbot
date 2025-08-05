@@ -35,7 +35,8 @@ local aimTargets = { "Jason", "c00lkidd", "JohnDoe", "1x1x1x1", "Noli" }
 local trackedAnimations = {
     ["103601716322988"] = true,
     ["133491532453922"] = true,
-    ["86371356500204"] = true
+    ["86371356500204"] = true,
+    ["76649505662612"] = true
 }
 
 -- State
