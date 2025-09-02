@@ -299,7 +299,7 @@ end)
 local active = false
 local usePingMode = false
 local aimDuration = 1.7
-local aimTargets = { "Slasher", "c00lkidd", "JohnDoe", "1x1x1x1", "Noli", "Slasher"}
+local aimTargets = {"Slasher", "c00lkidd", "JohnDoe", "1x1x1x1", "Noli"}
 -- trackedAnimations not used anymore, kept harmlessly in case you want to revert
 local trackedAnimations = {
     ["103601716322988"] = true,
